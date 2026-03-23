@@ -1,0 +1,84 @@
+name: Build & Push to GitHub Packages (GHCR)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"         # triggers on version tags like v1.0.0, v2.3.1
+  workflow_dispatch:     # allows manual trigger from GitHub Actions UI
+    inputs:
+      tag:
+        description: "Docker image tag (e.g. v1.0.0)"
+        required: true
+        default: "latest"
+
+env:
+  REGISTRY: ghcr.io
+  # ghcr.io/owner/repo-name — both owner and repo are auto-populated
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build & Push to GHCR
+    runs-on: ubuntu-latest
+
+    # Required permissions for GHCR — no secrets needed!
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # ── 1. Checkout code ──────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Determine image tags ───────────────────────────────────────────
+      - name: Extract metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # On version tag push: full semver breakdown
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            # On manual trigger: use the provided tag
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            # Always tag branch name
+            type=ref,event=branch
+            # Always tag the git sha (great for traceability)
+            type=sha,format=short
+
+      # ── 3. Set up QEMU for multi-platform builds ──────────────────────────
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # ── 4. Set up Docker Buildx ───────────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── 5. Log in to GHCR using the built-in GITHUB_TOKEN ────────────────
+      #       No secrets to configure — this just works!
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 6. Build and push ─────────────────────────────────────────────────
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── 7. Print image digest ─────────────────────────────────────────────
+      - name: Image digest
+        run: echo "Pushed ${{ env.IMAGE_NAME }} → digest ${{ steps.build-and-push.outputs.digest }}"
