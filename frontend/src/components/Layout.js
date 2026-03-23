@@ -10,6 +10,7 @@ const navItems = [
   { to: '/maintenance',icon: '🔧', label: 'Maintenance' },
   { to: '/contacts',   icon: '👤', label: 'Contacts' },
   { to: '/activity',   icon: '📊', label: 'Activity Log' },
+  { to: '/inventory',  icon: '🔍', label: 'Inventory Audit' },
 ];
 
 export default function Layout() {

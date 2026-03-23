@@ -17,6 +17,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import ImportExportPage from './pages/ImportExportPage';
 import LabelPrintPage from './pages/LabelPrintPage';
 import ActivityPage from './pages/ActivityPage';
+import InventoryPage from './pages/InventoryPage';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -50,6 +51,7 @@ function App() {
               <Route path="import-export" element={<ImportExportPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="activity" element={<ActivityPage />} />
+              <Route path="inventory" element={<InventoryPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

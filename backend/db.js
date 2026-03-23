@@ -57,6 +57,32 @@ function runMigrations() {
     db.pragma('foreign_keys = ON');
   }
 
+  // Migration: add inventory tables if missing
+  try {
+    db.prepare("SELECT 1 FROM inventory_sessions LIMIT 1").get();
+  } catch(e) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS inventory_sessions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        status TEXT DEFAULT 'open',
+        notes TEXT,
+        created_by TEXT,
+        closed_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS inventory_scans (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        asset_id TEXT NOT NULL,
+        barcode TEXT,
+        scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        scanned_by TEXT
+      );
+    `);
+    console.log('Created inventory tables.');
+  }
+
   // Migration: add project_line_items table if missing (upgrading from older versions)
   try {
     db.prepare("SELECT 1 FROM project_line_items LIMIT 1").get();

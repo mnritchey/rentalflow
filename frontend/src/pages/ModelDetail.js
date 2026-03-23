@@ -20,8 +20,25 @@ export default function ModelDetail() {
   const [bulkText, setBulkText] = useState('');
   const [bulkLocation, setBulkLocation] = useState('');
   const [editAsset, setEditAsset] = useState(null);
+  const [transferAsset, setTransferAsset] = useState(null);
+  const [transferModelId, setTransferModelId] = useState('');
+  const [allModels, setAllModels] = useState([]);
 
   const load = () => api.get(`/equipment/models/${id}`).then(m => { setModel(m); setForm(m); });
+
+  const openTransfer = (asset) => {
+    setTransferAsset(asset);
+    setTransferModelId('');
+    if (allModels.length === 0) api.get('/equipment/models').then(setAllModels);
+  };
+
+  const handleTransfer = async (e) => {
+    e.preventDefault();
+    if (!transferModelId) return;
+    await api.put(`/assets/${transferAsset.id}/transfer`, { new_model_id: transferModelId });
+    setTransferAsset(null);
+    load();
+  };
   useEffect(() => {
     load();
     api.get('/equipment/categories').then(setCategories);
@@ -157,7 +174,7 @@ export default function ModelDetail() {
         ) : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Barcode</th><th>Serial #</th><th>Condition</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Barcode</th><th>Serial #</th><th>Condition</th><th>Location</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
               <tbody>
                 {(model.assets||[]).map(a => (
                   <tr key={a.id}>
@@ -166,9 +183,15 @@ export default function ModelDetail() {
                     <td><span className={`badge ${COND_CLASS[a.condition]||'badge-gray'}`}>{a.condition}</span></td>
                     <td>{a.location_name || <span className="text-muted">—</span>}</td>
                     <td><span className={`badge ${a.status==='available'?'badge-green':a.status==='checked_out'?'badge-amber':'badge-gray'}`}>{a.status}</span></td>
+                    <td style={{fontSize:12,color:'var(--text2)',maxWidth:160}}>
+                      {a.notes ? (
+                        <span title={a.notes} style={{display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.notes}</span>
+                      ) : <span className="text-muted">—</span>}
+                    </td>
                     <td>
-                      <div style={{display:'flex',gap:6}}>
+                      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                         <button className="btn btn-ghost btn-sm" onClick={() => setEditAsset({...a})}>Edit</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => openTransfer(a)} title="Move to a different model">↔ Transfer</button>
                         <Link to={`/maintenance?asset=${a.id}`} className="btn btn-ghost btn-sm">🔧</Link>
                         <button className="btn btn-danger btn-sm" onClick={() => handleDeleteAsset(a.id)}>Delete</button>
                       </div>
@@ -249,6 +272,40 @@ export default function ModelDetail() {
               </div>
               <div className="form-group"><label className="form-label">Notes</label><textarea className="form-textarea" value={editAsset.notes||''} onChange={e=>setEditAsset({...editAsset,notes:e.target.value})}/></div>
               <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={()=>setEditAsset(null)}>Cancel</button><button type="submit" className="btn btn-primary">Save</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+      {/* Transfer Asset Modal */}
+      {transferAsset && (
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setTransferAsset(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">Transfer Asset to Another Model</div>
+              <button className="modal-close" onClick={()=>setTransferAsset(null)}>✕</button>
+            </div>
+            <p style={{color:'var(--text2)',fontSize:13,marginBottom:16}}>
+              Moving <strong className="mono">{transferAsset.barcode}</strong> away from <strong>{model?.name}</strong>.
+              This does not affect any active project assignments.
+            </p>
+            <form onSubmit={handleTransfer}>
+              <div className="form-group">
+                <label className="form-label">Destination Model *</label>
+                <select className="form-select" value={transferModelId} onChange={e=>setTransferModelId(e.target.value)} required autoFocus>
+                  <option value="">Select a model...</option>
+                  {allModels.filter(m=>m.id!==id).map(m=>(
+                    <option key={m.id} value={m.id}>{m.name}{m.category_name?` — ${m.category_name}`:''}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={()=>setTransferAsset(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={!transferModelId}>Transfer Asset</button>
+              </div>
             </form>
           </div>
         </div>

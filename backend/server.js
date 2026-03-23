@@ -33,6 +33,7 @@ app.use('/api/reports',     require('./routes/reports'));
 app.use('/api/settings',    require('./routes/settings'));
 app.use('/api/maintenance', require('./routes/maintenance'));
 app.use('/api/io',          require('./routes/importexport'));
+app.use('/api/inventory',   require('./routes/inventory'));
 
 // 404 handler for unmatched /api/* routes — returns JSON, not HTML
 app.use('/api/*', (req, res) => {

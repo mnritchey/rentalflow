@@ -3,21 +3,25 @@ import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
 // Release history — add a new entry here with each release
+// Versioning: MAJOR.MINOR.PATCH
+//   MAJOR — breaking changes, database migrations, major overhauls
+//   MINOR — new features and modules
+//   PATCH — bug fixes, tweaks, small improvements
 const RELEASE_NOTES = [
-  { version:'3.2', date:'2026-03-17', notes:'Project notes section; dashboard overdue alert; removed equipment overview from dashboard' },
-  { version:'3.1', date:'2026-03-17', notes:'Manual line items on projects with quantity; included in receipt print' },
-  { version:'3.0', date:'2026-03-17', notes:'Activity log with full user attribution, per-user stats, filterable scan history' },
-  { version:'2.9', date:'2026-03-17', notes:'Import feedback with skip reasons, warnings, and collapsible result sections' },
-  { version:'2.8', date:'2026-03-17', notes:'Sortable table headers on Equipment and Projects; status filter pills on Projects' },
-  { version:'2.7', date:'2026-03-17', notes:'Light/dark theme toggle, persisted in browser' },
-  { version:'2.6', date:'2026-03-17', notes:'Contact checkout report (HTML + CSV); label logo in left column' },
-  { version:'2.5', date:'2026-03-17', notes:'Edit/delete categories, manufacturers, locations; label logo checkbox fixed' },
-  { version:'2.4', date:'2026-03-17', notes:'Scan hang fix (stale closure); API error surfacing; build reliability' },
-  { version:'2.3', date:'2026-03-17', notes:'Company logo in settings, receipts, and labels; maintenance barcode lookup' },
-  { version:'2.2', date:'2026-03-17', notes:'FOREIGN KEY constraint fix for project creation; auto-migration on startup' },
-  { version:'2.1', date:'2026-03-17', notes:'Create Project button fix; loading state and error feedback' },
-  { version:'2.0', date:'2026-03-17', notes:'Transfer by re-scan; global check-in; maintenance module; import/export; label printing; print receipt fix' },
-  { version:'1.0', date:'2026-03-16', notes:'Initial release — projects, equipment, scan check-out/in, receipts, multi-user' },
+  { version:'1.3.3', date:'2026-03-23', notes:'Asset notes column in model detail; asset transfer between models; inventory/audit scan system' },
+  { version:'1.3.2', date:'2026-03-23', notes:'Project notes section; dashboard overdue alert; equipment overview replaced with items-out panel' },
+  { version:'1.3.1', date:'2026-03-23', notes:'Manual line items on projects with quantity; included in receipt print' },
+  { version:'1.3.0', date:'2026-03-23', notes:'Activity log with full user attribution, per-user stats, filterable scan history' },
+  { version:'1.2.4', date:'2026-03-23', notes:'Import feedback with skip reasons, warnings, and collapsible result sections' },
+  { version:'1.2.3', date:'2026-03-23', notes:'Sortable table headers on Equipment and Projects; status filter pills on Projects' },
+  { version:'1.2.2', date:'2026-03-23', notes:'Light/dark theme toggle, persisted in browser' },
+  { version:'1.2.1', date:'2026-03-23', notes:'Contact checkout report (HTML + CSV); label logo in left column' },
+  { version:'1.2.0', date:'2026-03-23', notes:'Edit/delete categories, manufacturers, locations; label logo checkbox; company logo on receipts and labels' },
+  { version:'1.1.3', date:'2026-03-23', notes:'Scan hang fix (stale closure); API non-JSON error surfacing; build reliability improvements' },
+  { version:'1.1.2', date:'2026-03-23', notes:'FOREIGN KEY constraint fix for project creation; auto-migration on startup' },
+  { version:'1.1.1', date:'2026-03-23', notes:'Create Project button fix; loading state and error feedback on forms' },
+  { version:'1.1.0', date:'2026-03-23', notes:'Transfer by re-scan; global check-in page; maintenance module; CSV import/export; label printing; print receipt token fix' },
+  { version:'1.0.0', date:'2026-03-16', notes:'Initial release — projects, equipment catalog, barcode scan check-out/in, receipts, multi-user support' },
 ];
 
 export default function SettingsPage() {

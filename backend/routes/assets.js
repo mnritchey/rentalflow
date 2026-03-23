@@ -82,3 +82,14 @@ router.delete('/:id', authMiddleware, (req, res) => {
 });
 
 module.exports = router;
+
+// Transfer asset to a different model
+router.put('/:id/transfer', authMiddleware, (req, res) => {
+  const db = getDb();
+  const { new_model_id } = req.body;
+  if (!new_model_id) return res.status(400).json({ error: 'new_model_id required' });
+  const model = db.prepare('SELECT id, name FROM equipment_models WHERE id=?').get(new_model_id);
+  if (!model) return res.status(404).json({ error: 'Model not found' });
+  db.prepare('UPDATE assets SET model_id=? WHERE id=?').run(new_model_id, req.params.id);
+  res.json({ success: true, model_name: model.name });
+});
