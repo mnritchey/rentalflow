@@ -276,9 +276,6 @@ export default function ModelDetail() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
       {/* Transfer Asset Modal */}
       {transferAsset && (

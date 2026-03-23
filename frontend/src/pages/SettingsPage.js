@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 //   MINOR — new features and modules
 //   PATCH — bug fixes, tweaks, small improvements
 const RELEASE_NOTES = [
+  { version:'1.3.4', date:'2026-03-23', notes:'Build fix: ModelDetail transfer modal JSX placed outside component; docker build now succeeds' },
   { version:'1.3.3', date:'2026-03-23', notes:'Asset notes column in model detail; asset transfer between models; inventory/audit scan system' },
   { version:'1.3.2', date:'2026-03-23', notes:'Project notes section; dashboard overdue alert; equipment overview replaced with items-out panel' },
   { version:'1.3.1', date:'2026-03-23', notes:'Manual line items on projects with quantity; included in receipt print' },

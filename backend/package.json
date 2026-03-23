@@ -1,6 +1,6 @@
 {
   "name": "rentalflow",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "RentalFlow — AV Equipment Rental Management",
   "main": "server.js",
   "scripts": {
