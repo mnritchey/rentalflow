@@ -1,34 +1,44 @@
 # ── Stage 1: Build React frontend ──────────────────────────────────────────
 FROM node:20-alpine AS frontend-builder
+
 WORKDIR /frontend
-COPY frontend/package*.json ./
-RUN npm install
+
+# Install dependencies first (cached layer unless package.json changes)
+COPY frontend/package.json ./
+RUN npm install --legacy-peer-deps
+
+# Copy source and build
 COPY frontend/ .
 RUN npm run build
-# Ensure index.html lands in dist (webpack plugin does it, belt-and-suspenders)
-RUN cp -n public/index.html dist/index.html 2>/dev/null || true
-RUN ls -la dist/   # show what was built for debugging
 
-# ── Stage 2: Production image ──────────────────────────────────────────────
+# Guarantee index.html is in dist
+RUN cp -f public/index.html dist/index.html
+
+# Confirm build output
+RUN echo "=== Frontend build output ===" && ls -la dist/
+
+# ── Stage 2: Production image ───────────────────────────────────────────────
 FROM node:20-alpine AS production
-# better-sqlite3 needs build tools
+
+# better-sqlite3 requires native compilation tools
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
 # Install backend dependencies
-COPY backend/package*.json ./
+COPY backend/package.json ./
 RUN npm install --production
 
 # Copy backend source
 COPY backend/ .
 
-# Copy built frontend
+# Copy built frontend from stage 1
 COPY --from=frontend-builder /frontend/dist /app/frontend
 
-# Verify frontend build landed correctly
-RUN ls -la /app/frontend/
+# Confirm frontend landed
+RUN echo "=== App frontend ===" && ls -la /app/frontend/
 
+# Create data directories
 RUN mkdir -p /data/uploads/equipment /data/uploads/company
 
 EXPOSE 3000
