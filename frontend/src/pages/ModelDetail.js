@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
+import { useRole } from '../hooks/useRole';
 
 const CONDITIONS = ['excellent','good','fair','poor','damaged'];
 const COND_CLASS = { excellent:'badge-green', good:'badge-green', fair:'badge-amber', poor:'badge-red', damaged:'badge-red' };
@@ -86,6 +87,7 @@ export default function ModelDetail() {
     setEditAsset(null); load();
   };
 
+  const { can } = useRole();
   if (!model) return <div className="page"><p className="text-muted">Loading...</p></div>;
 
   return (
@@ -106,7 +108,7 @@ export default function ModelDetail() {
           {editing ? (
             <><button className="btn btn-success" onClick={handleSave}>Save</button><button className="btn btn-ghost" onClick={() => setEditing(false)}>Cancel</button></>
           ) : (
-            <><Link to={`/equipment/${id}/labels`} className="btn btn-ghost">🏷 Print Labels</Link><button className="btn btn-ghost" onClick={() => setEditing(true)}>Edit</button><button className="btn btn-danger" onClick={handleDelete}>Delete</button></>
+            <><Link to={`/equipment/${id}/labels`} className="btn btn-ghost">🏷 Print Labels</Link><button className="btn btn-ghost" onClick={() => setEditing(true)}>Edit</button>{can.deleteEquipment && <button className="btn btn-danger" onClick={handleDelete}>Delete</button>}</>
           )}
         </div>
       </div>
@@ -193,7 +195,7 @@ export default function ModelDetail() {
                         <button className="btn btn-ghost btn-sm" onClick={() => setEditAsset({...a})}>Edit</button>
                         <button className="btn btn-ghost btn-sm" onClick={() => openTransfer(a)} title="Move to a different model">↔ Transfer</button>
                         <Link to={`/maintenance?asset=${a.id}`} className="btn btn-ghost btn-sm">🔧</Link>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDeleteAsset(a.id)}>Delete</button>
+                        {can.deleteEquipment && <button className="btn btn-danger btn-sm" onClick={() => handleDeleteAsset(a.id)}>Delete</button>}
                       </div>
                     </td>
                   </tr>

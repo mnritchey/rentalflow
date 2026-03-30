@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
+import { useRole } from '../hooks/useRole';
 
 const STATUS_OPTS  = ['draft','active','completed','cancelled'];
 const STATUS_CLASS = { draft:'badge-gray', active:'badge-green', completed:'badge-blue', cancelled:'badge-red' };
@@ -14,6 +15,7 @@ export default function ProjectDetail() {
   const [editing, setEditing]   = useState(false);
   const [form, setForm]         = useState({});
   const [showDelete, setShowDelete]   = useState(false);
+  const { can } = useRole();
 
   // Inline notes editing
   const [editingNotes, setEditingNotes] = useState(false);
@@ -117,7 +119,7 @@ export default function ProjectDetail() {
           {editing
             ? <><button className="btn btn-success" onClick={handleSave}>Save</button><button className="btn btn-ghost" onClick={() => setEditing(false)}>Cancel</button></>
             : <button className="btn btn-ghost" onClick={() => setEditing(true)}>Edit</button>}
-          <button className="btn btn-danger" onClick={() => setShowDelete(true)}>Delete</button>
+          {can.deleteProjects && <button className="btn btn-danger" onClick={() => setShowDelete(true)}>Delete</button>}
         </div>
       </div>
 

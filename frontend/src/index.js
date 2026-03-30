@@ -18,6 +18,8 @@ import ImportExportPage from './pages/ImportExportPage';
 import LabelPrintPage from './pages/LabelPrintPage';
 import ActivityPage from './pages/ActivityPage';
 import InventoryPage from './pages/InventoryPage';
+import TasksPage from './pages/TasksPage';
+import { useRole } from './hooks/useRole';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -27,6 +29,15 @@ function PrivateRoute({ children }) {
     </div>
   );
   return user ? children : <Navigate to="/login" />;
+}
+
+function AdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  const { isAdmin } = useRole();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" />;
+  if (!isAdmin) return <Navigate to="/" />;
+  return children;
 }
 
 function App() {
@@ -48,10 +59,12 @@ function App() {
               <Route path="labels" element={<LabelPrintPage />} />
               <Route path="contacts" element={<ContactsPage />} />
               <Route path="maintenance" element={<MaintenancePage />} />
-              <Route path="import-export" element={<ImportExportPage />} />
+              <Route path="import-export" element={<AdminRoute><ImportExportPage /></AdminRoute>} />
               <Route path="settings" element={<SettingsPage />} />
-              <Route path="activity" element={<ActivityPage />} />
+              <Route path="activity" element={<AdminRoute><ActivityPage /></AdminRoute>} />
               <Route path="inventory" element={<InventoryPage />} />
+              <Route path="tasks" element={<TasksPage />} />
+              <Route path="tasks/:id" element={<TasksPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

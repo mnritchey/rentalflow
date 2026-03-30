@@ -57,6 +57,37 @@ function runMigrations() {
     db.pragma('foreign_keys = ON');
   }
 
+  // Migration: add tasks tables if missing
+  try {
+    db.prepare("SELECT 1 FROM tasks LIMIT 1").get();
+  } catch(e) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        priority TEXT DEFAULT 'normal',
+        status TEXT DEFAULT 'open',
+        due_date DATE,
+        assigned_to TEXT,
+        project_id TEXT,
+        created_by TEXT,
+        closed_by TEXT,
+        closed_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS task_notes (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        user_id TEXT,
+        content TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Created tasks tables.');
+  }
+
   // Migration: add inventory tables if missing
   try {
     db.prepare("SELECT 1 FROM inventory_sessions LIMIT 1").get();
@@ -238,6 +269,30 @@ function initSchema() {
       unit_price REAL DEFAULT 0,
       notes TEXT,
       sort_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      priority TEXT DEFAULT 'normal',
+      status TEXT DEFAULT 'open',
+      due_date DATE,
+      assigned_to TEXT,
+      project_id TEXT,
+      created_by TEXT,
+      closed_by TEXT,
+      closed_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS task_notes (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL REFERENCES tasks(id),
+      user_id TEXT,
+      content TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 

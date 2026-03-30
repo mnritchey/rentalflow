@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api, getToken } from '../utils/api';
+import { useRole } from '../hooks/useRole';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState([]);
@@ -8,6 +9,7 @@ export default function ContactsPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name:'', email:'', phone:'', company:'', address:'', notes:'' });
 
+  const { can } = useRole();
   const load = () => api.get('/contacts').then(setContacts);
   useEffect(() => { load(); }, []);
 
@@ -80,7 +82,7 @@ export default function ContactsPage() {
                         title="Checkout report — all items currently out to this contact"
                       >📋 Report</button>
                       <button className="btn btn-ghost btn-sm" onClick={() => openEdit(c)}>Edit</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(c.id)}>Delete</button>
+                      {can.deleteContacts && <button className="btn btn-danger btn-sm" onClick={() => handleDelete(c.id)}>Delete</button>}
                     </div>
                   </td>
                 </tr>

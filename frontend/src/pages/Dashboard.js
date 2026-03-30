@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [overdue, setOverdue]     = useState([]);
   const [assets, setAssets]       = useState({ total: 0, available: 0 });
   const [loading, setLoading]     = useState(true);
+  const [taskSummary, setTaskSummary] = useState({ open:0, urgent:0, overdue:0 });
 
   useEffect(() => {
     Promise.all([
@@ -28,6 +29,9 @@ export default function Dashboard() {
 
     // Overdue projects
     api.get('/projects/overdue').then(setOverdue).catch(() => {});
+
+    // Task summary
+    api.get('/tasks/summary').then(setTaskSummary).catch(() => {});
 
     // Asset counts from equipment models
     api.get('/equipment/models').then(models => {
@@ -64,16 +68,20 @@ export default function Dashboard() {
       {/* ── Stats row ── */}
       <div className="grid-4" style={{ marginBottom: 28 }}>
         {[
-          { label:'Active Projects',  value: activeProjects.length, icon:'📋', color:'var(--accent)' },
-          { label:'Items Out',        value: checkedOut,             icon:'📦', color:'var(--amber)'  },
-          { label:'Overdue',          value: overdue.length,         icon:'⚠️', color: overdue.length > 0 ? 'var(--red)' : 'var(--text2)' },
-          { label:'In Draft',         value: draftProjects.length,   icon:'📝', color:'var(--text2)'  },
+          { label:'Active Projects', value: activeProjects.length, icon:'📋', color:'var(--accent)', to:'/projects' },
+          { label:'Items Out',       value: checkedOut,            icon:'📦', color:'var(--amber)',  to:'/scan'     },
+          { label:'Open Tasks',      value: taskSummary.open,      icon:'✅', color: taskSummary.urgent > 0 ? 'var(--amber)' : 'var(--green)', to:'/tasks' },
+          { label:'Overdue Returns', value: overdue.length,        icon:'⚠️', color: overdue.length > 0 ? 'var(--red)' : 'var(--text2)', to:'/projects' },
         ].map(s => (
-          <div key={s.label} className="stat-card">
-            <div style={{ fontSize:22, marginBottom:8 }}>{s.icon}</div>
-            <div className="stat-value" style={{ color:s.color }}>{s.value}</div>
-            <div className="stat-label">{s.label}</div>
-          </div>
+          <Link key={s.label} to={s.to} style={{ textDecoration:'none' }}>
+            <div className="stat-card" style={{ cursor:'pointer', transition:'border-color .15s' }}
+              onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'}
+              onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border)'}>
+              <div style={{ fontSize:22, marginBottom:8 }}>{s.icon}</div>
+              <div className="stat-value" style={{ color:s.color }}>{s.value}</div>
+              <div className="stat-label">{s.label}</div>
+            </div>
+          </Link>
         ))}
       </div>
 
@@ -232,6 +240,58 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Open tasks widget */}
+      {taskSummary.open > 0 && (
+        <div className="card" style={{ marginTop:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <div className="card-title" style={{ marginBottom:0 }}>
+              ✅ My Tasks
+              {taskSummary.overdue > 0 && <span style={{ fontSize:12, color:'var(--red)', fontWeight:600, marginLeft:8 }}>{taskSummary.overdue} overdue</span>}
+              {taskSummary.urgent > 0 && <span style={{ fontSize:12, color:'var(--amber)', fontWeight:600, marginLeft:8 }}>{taskSummary.urgent} urgent</span>}
+            </div>
+            <Link to="/tasks" style={{ fontSize:12, color:'var(--accent)', textDecoration:'none', fontWeight:600 }}>View all →</Link>
+          </div>
+          <TaskWidget />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskWidget() {
+  const [tasks, setTasks] = useState([]);
+  useEffect(() => {
+    api.get('/tasks?status=open').then(data => setTasks(Array.isArray(data) ? data.slice(0,5) : []));
+  }, []);
+
+  const isOverdue = (t) => t.due_date && t.due_date < new Date().toISOString().slice(0,10);
+  const PICONS = { urgent:'🔴', high:'🟠', normal:'🔵', low:'⚪' };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+      {tasks.map(t => (
+        <Link key={t.id} to={`/tasks/${t.id}`} style={{ textDecoration:'none' }}>
+          <div style={{
+            display:'flex', alignItems:'center', gap:10, padding:'9px 12px',
+            background:'var(--surface2)', borderRadius:8, transition:'background .15s',
+            borderLeft: isOverdue(t) ? '3px solid var(--red)' : '3px solid transparent',
+          }}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--border)'}
+            onMouseLeave={e=>e.currentTarget.style.background='var(--surface2)'}
+          >
+            <span style={{ fontSize:14, flexShrink:0 }}>{PICONS[t.priority]||'🔵'}</span>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontWeight:600, fontSize:13, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
+              <div style={{ fontSize:11, color:'var(--text2)', marginTop:1 }}>
+                {t.assigned_to_name ? `👤 ${t.assigned_to_name}` : '🌐 Global'}
+                {t.due_date && <span style={{ marginLeft:8, color: isOverdue(t)?'var(--red)':undefined }}>📅 {t.due_date}</span>}
+              </div>
+            </div>
+            {isOverdue(t) && <span style={{ fontSize:10, color:'var(--red)', fontWeight:700, flexShrink:0 }}>OVERDUE</span>}
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
