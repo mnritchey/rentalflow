@@ -57,12 +57,69 @@ function runMigrations() {
     db.pragma('foreign_keys = ON');
   }
 
+  // Migration: add software_licenses tables if missing
+  try {
+    db.prepare("SELECT 1 FROM software_licenses LIMIT 1").get();
+  } catch(e) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS software_licenses (
+        id TEXT PRIMARY KEY,
+        software_name TEXT NOT NULL,
+        version TEXT,
+        license_key TEXT,
+        license_type TEXT DEFAULT 'perpetual',
+        vendor TEXT,
+        seat_count INTEGER,
+        purchase_date DATE,
+        expiry_date DATE,
+        cost REAL,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS license_assignments (
+        id TEXT PRIMARY KEY,
+        license_id TEXT NOT NULL,
+        asset_id TEXT NOT NULL,
+        notes TEXT,
+        assigned_by TEXT,
+        assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Created software_licenses tables.');
+  }
+
   // Migration: add tasks tables if missing
   try {
     db.prepare("SELECT 1 FROM tasks LIMIT 1").get();
   } catch(e) {
     db.exec(`
-      CREATE TABLE IF NOT EXISTS tasks (
+      CREATE TABLE IF NOT EXISTS software_licenses (
+      id TEXT PRIMARY KEY,
+      software_name TEXT NOT NULL,
+      version TEXT,
+      license_key TEXT,
+      license_type TEXT DEFAULT 'perpetual',
+      vendor TEXT,
+      seat_count INTEGER,
+      purchase_date DATE,
+      expiry_date DATE,
+      cost REAL,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS license_assignments (
+      id TEXT PRIMARY KEY,
+      license_id TEXT NOT NULL REFERENCES software_licenses(id),
+      asset_id TEXT NOT NULL REFERENCES assets(id),
+      notes TEXT,
+      assigned_by TEXT,
+      assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
@@ -270,6 +327,31 @@ function initSchema() {
       notes TEXT,
       sort_order INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS software_licenses (
+      id TEXT PRIMARY KEY,
+      software_name TEXT NOT NULL,
+      version TEXT,
+      license_key TEXT,
+      license_type TEXT DEFAULT 'perpetual',
+      vendor TEXT,
+      seat_count INTEGER,
+      purchase_date DATE,
+      expiry_date DATE,
+      cost REAL,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS license_assignments (
+      id TEXT PRIMARY KEY,
+      license_id TEXT NOT NULL REFERENCES software_licenses(id),
+      asset_id TEXT NOT NULL REFERENCES assets(id),
+      notes TEXT,
+      assigned_by TEXT,
+      assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS tasks (

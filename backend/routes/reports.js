@@ -61,17 +61,36 @@ function generatePrintHTML(project, items, lineItems, companyName, logoPath) {
     grouped[cat].push(i);
   });
 
-  const rows = Object.entries(grouped).map(([cat, catItems]) => `
-    <tr><td colspan="4" style="background:#1e293b;color:white;padding:7px 12px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px">${cat}</td></tr>
-    ${catItems.map((i, idx) => `
+  // Group items by category then model name, aggregating barcodes/serials
+  const rows = Object.entries(grouped).map(([cat, catItems]) => {
+    // Sub-group by model name within category
+    const byModel = {};
+    catItems.forEach(i => {
+      const key = i.model_name;
+      if (!byModel[key]) byModel[key] = { model_name: i.model_name, replacement_value: i.replacement_value||0, barcodes: [], serials: [] };
+      byModel[key].barcodes.push(i.barcode);
+      if (i.serial_number) byModel[key].serials.push(i.serial_number);
+    });
+
+    const modelRows = Object.values(byModel).map((m, idx) => `
       <tr style="background:${idx%2===0?'white':'#f8fafc'}">
-        <td style="padding:8px 12px">${i.model_name}</td>
-        <td style="padding:8px 12px;font-family:monospace;font-size:13px">${i.barcode}</td>
-        <td style="padding:8px 12px;color:#64748b;font-size:12px">${i.serial_number || '—'}</td>
-        <td style="padding:8px 12px;text-align:right;font-size:13px">$${(i.replacement_value||0).toLocaleString()}</td>
+        <td style="padding:8px 12px;font-weight:600">${m.model_name}</td>
+        <td style="padding:6px 12px;text-align:center;font-weight:700;font-size:15px">${m.barcodes.length}</td>
+        <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:#475569;line-height:1.8">
+          ${m.barcodes.join('<br>')}
+        </td>
+        <td style="padding:8px 12px;font-size:11px;color:#64748b;line-height:1.8">
+          ${m.serials.length > 0 ? m.serials.join('<br>') : '—'}
+        </td>
+        <td style="padding:8px 12px;text-align:right;font-size:13px">$${(m.replacement_value * m.barcodes.length).toLocaleString()}</td>
       </tr>
-    `).join('')}
-  `).join('');
+    `).join('');
+
+    return `
+      <tr><td colspan="5" style="background:#1e293b;color:white;padding:7px 12px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:1px">${cat}</td></tr>
+      ${modelRows}
+    `;
+  }).join('');
 
   return `<!DOCTYPE html>
 <html>
@@ -186,6 +205,8 @@ function generatePrintHTML(project, items, lineItems, companyName, logoPath) {
 
   <div class="totals-row">
     <span>Total Items: <strong>${items.length}</strong></span>
+    &nbsp;&nbsp;&nbsp;
+    <span>Unique Models: <strong>${Object.values(grouped).reduce((s,arr)=>{ const m={}; arr.forEach(i=>m[i.model_name]=1); return s+Object.keys(m).length; },0)}</strong></span>
     <span>Total Replacement Value: <strong>$${totalValue.toLocaleString()}</strong></span>
   </div>
 

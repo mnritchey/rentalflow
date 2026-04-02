@@ -18,6 +18,31 @@ export default function ModelDetail() {
   const [showAddAsset, setShowAddAsset] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [assetForm, setAssetForm] = useState({ barcode:'', serial_number:'', storage_location_id:'', condition:'excellent', notes:'', purchase_date:'', purchase_price:'' });
+  const [barcodeChecking, setBarcodeChecking] = useState(false);
+  const [barcodeAvailable, setBarcodeAvailable] = useState(null); // null | true | false
+  const [barcodePrefix, setBarcodePrefix]       = useState('RF');
+  const [assetTab, setAssetTab] = useState('assets'); // 'assets' | 'licenses'
+  const [licenses, setLicenses] = useState([]);
+
+  const generateBarcode = async () => {
+    setBarcodeChecking(true);
+    try {
+      const res = await api.get(`/assets/next-barcode?prefix=${encodeURIComponent(barcodePrefix)}`);
+      setAssetForm(f => ({...f, barcode: res.barcode}));
+      setBarcodeAvailable(true);
+    } finally { setBarcodeChecking(false); }
+  };
+
+  const checkBarcode = async (val) => {
+    if (!val.trim()) { setBarcodeAvailable(null); return; }
+    setBarcodeChecking(true);
+    try {
+      const res = await api.get(`/assets/check-barcode/${encodeURIComponent(val.trim())}`);
+      setBarcodeAvailable(res.available);
+    } finally { setBarcodeChecking(false); }
+  };
+
+  const loadLicenses = () => api.get(`/licenses/asset/${id}`).then(setLicenses);
   const [bulkText, setBulkText] = useState('');
   const [bulkLocation, setBulkLocation] = useState('');
   const [editAsset, setEditAsset] = useState(null);
@@ -42,6 +67,7 @@ export default function ModelDetail() {
   };
   useEffect(() => {
     load();
+    loadLicenses();
     api.get('/equipment/categories').then(setCategories);
     api.get('/equipment/manufacturers').then(setManufacturers);
     api.get('/equipment/locations').then(setLocations);
@@ -161,17 +187,58 @@ export default function ModelDetail() {
               <div style={{fontSize:11,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'0.5px'}}>Total Assets</div>
             </div>
           </div>
-          <div style={{display:'flex',gap:8}}>
-            <button className="btn btn-primary" style={{flex:1}} onClick={() => setShowAddAsset(true)}>+ Add Asset</button>
-            <button className="btn btn-ghost" onClick={() => setShowBulk(true)}>Bulk Add</button>
-          </div>
+          <div style={{fontSize:12,color:'var(--text2)'}}>Use the tabs above to add assets or view licenses.</div>
         </div>
       </div>
 
       {/* Assets table */}
       <div className="card">
-        <div className="card-title">Assets / Barcodes ({(model.assets||[]).length})</div>
-        {(model.assets||[]).length === 0 ? (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+          <div style={{display:'flex',gap:2}}>
+            {[['assets',`Assets (${(model.assets||[]).length})`],['licenses',`Licenses (${licenses.length})`]].map(([t,l])=>(
+              <button key={t} onClick={()=>{ setAssetTab(t); if(t==='licenses') loadLicenses(); }} style={{
+                background:'none',border:'none',padding:'6px 14px',cursor:'pointer',fontSize:13,
+                fontWeight:assetTab===t?700:500, color:assetTab===t?'var(--accent)':'var(--text2)',
+                borderBottom:assetTab===t?'2px solid var(--accent)':'2px solid transparent',
+                fontFamily:'inherit',
+              }}>{l}</button>
+            ))}
+          </div>
+          {assetTab==='assets' && (
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn btn-primary btn-sm" onClick={()=>{ setBarcodeAvailable(null); setShowAddAsset(true); }}>+ Add Asset</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowBulk(true)}>Bulk Add</button>
+            </div>
+          )}
+        </div>
+        {assetTab === 'licenses' ? (
+          <div>
+            {licenses.length === 0 ? (
+              <div className="empty-state" style={{padding:24}}>
+                <div className="icon">🔑</div>
+                <p>No software licenses assigned to assets of this model.</p>
+                <p style={{fontSize:13,marginTop:8,color:'var(--text2)'}}>Go to <a href="/licenses" style={{color:'var(--accent)'}}>Software Licenses</a> to assign licenses to individual assets.</p>
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Software</th><th>Version</th><th>Type</th><th>Asset</th><th>Expires</th></tr></thead>
+                  <tbody>
+                    {licenses.map(l=>(
+                      <tr key={l.id}>
+                        <td><div className="table-name">🔑 {l.software_name}</div></td>
+                        <td style={{fontSize:13,color:'var(--text2)'}}>{l.version||'—'}</td>
+                        <td><span style={{fontSize:11,background:'var(--surface2)',borderRadius:4,padding:'2px 6px',color:'var(--text2)'}}>{l.license_type}</span></td>
+                        <td><span className="mono" style={{fontSize:12}}>{l.barcode}</span>{l.serial_number&&<span style={{fontSize:11,color:'var(--text2)',marginLeft:6}}>{l.serial_number}</span>}</td>
+                        <td style={{fontSize:13,color:l.expiry_date&&new Date(l.expiry_date)<new Date()?'var(--red)':l.expiry_date?'var(--text)':'var(--text2)'}}>{l.expiry_date||'—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (model.assets||[]).length === 0 ? (
           <div className="empty-state"><div className="icon">📦</div><p>No assets yet. Add individual assets or use bulk add.</p></div>
         ) : (
           <div className="table-wrap">
@@ -212,7 +279,29 @@ export default function ModelDetail() {
           <div className="modal">
             <div className="modal-header"><div className="modal-title">Add Asset</div><button className="modal-close" onClick={()=>setShowAddAsset(false)}>✕</button></div>
             <form onSubmit={handleAddAsset}>
-              <div className="form-group"><label className="form-label">Barcode *</label><input className="form-input mono" value={assetForm.barcode} onChange={e=>setAssetForm({...assetForm,barcode:e.target.value})} required autoFocus /></div>
+              <div className="form-group">
+                <label className="form-label">Barcode *</label>
+                <div style={{display:'flex',gap:8,marginBottom:6}}>
+                  <input className="form-input mono" style={{flex:1,
+                    borderColor: barcodeAvailable===false?'var(--red)':barcodeAvailable===true?'var(--green)':undefined
+                  }}
+                    value={assetForm.barcode}
+                    onChange={e=>{setAssetForm({...assetForm,barcode:e.target.value}); setBarcodeAvailable(null);}}
+                    onBlur={e=>checkBarcode(e.target.value)}
+                    required autoFocus placeholder="Scan, type, or auto-generate..."
+                  />
+                  <button type="button" className="btn btn-ghost" onClick={generateBarcode} disabled={barcodeChecking}>
+                    {barcodeChecking?'...':'⚡ Generate'}
+                  </button>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:12,color:'var(--text2)'}}>Prefix:</span>
+                  <input className="form-input mono" value={barcodePrefix} onChange={e=>setBarcodePrefix(e.target.value)}
+                    style={{width:80,fontSize:13,padding:'4px 8px'}} placeholder="RF" />
+                  {barcodeAvailable===false && <span style={{fontSize:12,color:'var(--red)',fontWeight:600}}>⚠ Already in use</span>}
+                  {barcodeAvailable===true  && <span style={{fontSize:12,color:'var(--green)',fontWeight:600}}>✓ Available</span>}
+                </div>
+              </div>
               <div className="form-grid">
                 <div className="form-group"><label className="form-label">Serial Number</label><input className="form-input" value={assetForm.serial_number} onChange={e=>setAssetForm({...assetForm,serial_number:e.target.value})}/></div>
                 <div className="form-group"><label className="form-label">Condition</label>

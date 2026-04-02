@@ -13,6 +13,7 @@ const navItems = [
   { to: '/tasks',       icon: '✅', label: 'Tasks' },
   { to: '/activity',    icon: '📊', label: 'Activity Log',     adminOnly: true },
   { to: '/inventory',   icon: '🔍', label: 'Inventory Audit' },
+  { to: '/licenses',    icon: '🔑', label: 'Software Licenses' },
 ];
 
 const systemItems = [

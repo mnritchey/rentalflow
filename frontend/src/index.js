@@ -19,6 +19,7 @@ import LabelPrintPage from './pages/LabelPrintPage';
 import ActivityPage from './pages/ActivityPage';
 import InventoryPage from './pages/InventoryPage';
 import TasksPage from './pages/TasksPage';
+import LicensesPage from './pages/LicensesPage';
 import { useRole } from './hooks/useRole';
 
 function PrivateRoute({ children }) {
@@ -65,6 +66,7 @@ function App() {
               <Route path="inventory" element={<InventoryPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="tasks/:id" element={<TasksPage />} />
+              <Route path="licenses" element={<LicensesPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

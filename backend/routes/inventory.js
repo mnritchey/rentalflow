@@ -49,14 +49,16 @@ router.get('/sessions/:id', authMiddleware, (req, res) => {
   let missing = [];
   if (session.status === 'closed') {
     const scannedIds = new Set(scanned.map(s => s.asset_id));
+    const modelFilter = session.model_id ? 'AND a.model_id = ?' : '';
+    const params = session.model_id ? [session.model_id] : [];
     const allAssets = db.prepare(`
       SELECT a.*, m.name AS model_name, cat.name AS category_name
       FROM assets a
       JOIN equipment_models m ON a.model_id = m.id
       LEFT JOIN categories cat ON m.category_id = cat.id
-      WHERE a.status NOT IN ('retired')
+      WHERE a.status NOT IN ('retired') ${modelFilter}
       ORDER BY m.name, a.barcode
-    `).all();
+    `).all(...params);
     missing = allAssets.filter(a => !scannedIds.has(a.id));
   }
 
@@ -66,14 +68,15 @@ router.get('/sessions/:id', authMiddleware, (req, res) => {
 // Create new session
 router.post('/sessions', authMiddleware, (req, res) => {
   const db = getDb();
-  const { name, notes } = req.body;
+  const { name, notes, model_id } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Session name required' });
-  // Only one open session at a time
   const openSession = db.prepare("SELECT id FROM inventory_sessions WHERE status='open'").get();
   if (openSession) return res.status(400).json({ error: 'An inventory session is already open. Close it before starting a new one.' });
   const id = uuidv4();
-  db.prepare('INSERT INTO inventory_sessions (id, name, notes, created_by) VALUES (?, ?, ?, ?)')
-    .run(id, name.trim(), notes || null, req.user.id);
+  // Add model_id column if it doesn't exist yet
+  try { db.exec('ALTER TABLE inventory_sessions ADD COLUMN model_id TEXT'); } catch(e) {}
+  db.prepare('INSERT INTO inventory_sessions (id, name, notes, model_id, created_by) VALUES (?, ?, ?, ?, ?)')
+    .run(id, name.trim(), notes || null, model_id || null, req.user.id);
   res.json({ id });
 });
 
@@ -93,6 +96,15 @@ router.post('/sessions/:id/scan', authMiddleware, (req, res) => {
   `).get(barcode.trim());
 
   if (!asset) return res.json({ success: false, sound: 'error', message: `Unknown barcode: ${barcode}` });
+
+  // If session is model-scoped, verify the scanned asset belongs to that model
+  if (session.model_id && asset.model_id !== session.model_id) {
+    const expectedModel = db.prepare('SELECT name FROM equipment_models WHERE id=?').get(session.model_id);
+    return res.json({
+      success: false, sound: 'warning',
+      message: `${asset.model_name} (${barcode}) is not part of this audit scope (${expectedModel?.name || 'selected model'})`
+    });
+  }
 
   // Check for duplicate scan in this session
   const alreadyScanned = db.prepare(

@@ -81,6 +81,36 @@ router.delete('/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
+// Generate next available barcode
+router.get('/next-barcode', authMiddleware, (req, res) => {
+  const db = getDb();
+  const { prefix = 'RF' } = req.query;
+
+  // Find all existing barcodes that match the prefix + numeric pattern
+  const existing = db.prepare(
+    "SELECT barcode FROM assets WHERE barcode LIKE ? ORDER BY barcode"
+  ).all(prefix + '%').map(r => r.barcode);
+
+  // Find the highest numeric suffix used
+  let maxNum = 0;
+  for (const b of existing) {
+    const suffix = b.slice(prefix.length);
+    const n = parseInt(suffix, 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
+  }
+
+  // Next barcode = prefix + zero-padded number
+  const next = prefix + String(maxNum + 1).padStart(4, '0');
+  res.json({ barcode: next, prefix, next_number: maxNum + 1 });
+});
+
+// Check if a barcode is available
+router.get('/check-barcode/:barcode', authMiddleware, (req, res) => {
+  const db = getDb();
+  const exists = db.prepare('SELECT id FROM assets WHERE barcode=?').get(req.params.barcode);
+  res.json({ available: !exists, barcode: req.params.barcode });
+});
+
 module.exports = router;
 
 // Transfer asset to a different model
