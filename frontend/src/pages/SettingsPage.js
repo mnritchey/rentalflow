@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 //   MINOR — new features and modules
 //   PATCH — bug fixes, tweaks, small improvements
 const RELEASE_NOTES = [
+  { version:'1.5.1', date:'2026-03-24', notes:'Receipt pricing toggle (rental rate or replacement value); weight in lbs; checked-out project shown on asset rows; storage location notes; purchase date on assets' },
   { version:'1.5.0', date:'2026-03-24', notes:'Software license module with seat tracking & expiry; receipt grouped by model with qty; model-scoped inventory audit; barcode auto-generation' },
   { version:'1.4.0', date:'2026-03-24', notes:'Role-based permissions (operator vs admin); task module with global/assigned tasks, notes, priority, dashboard widget' },
   { version:'1.3.4', date:'2026-03-23', notes:'Build fix: ModelDetail transfer modal JSX placed outside component; docker build now succeeds' },

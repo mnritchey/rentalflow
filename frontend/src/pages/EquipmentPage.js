@@ -72,7 +72,7 @@ export default function EquipmentPage() {
   // ── Modal helpers ─────────────────────────────────────────────────────────
   const openNew = (type) => {
     const defaults = {
-      model:        { name:'', manufacturer_id:'', category_id:'', description:'', weight_kg:'', rental_price_day:'', replacement_value:'', notes:'' },
+      model:        { name:'', manufacturer_id:'', category_id:'', description:'', weight_lbs:'', rental_price_day:'', replacement_value:'', notes:'' },
       category:     { name:'', color:'#6c63ff' },
       manufacturer: { name:'', website:'', notes:'' },
       location:     { name:'', description:'' },
@@ -182,7 +182,7 @@ export default function EquipmentPage() {
                   <tr key={m.id}>
                     <td>
                       <div className="table-name">{m.name}</div>
-                      {m.weight_kg && <div className="table-sub">{m.weight_kg} kg</div>}
+                      {m.weight_lbs && <div className="table-sub">{m.weight_lbs} kg</div>}
                     </td>
                     <td>
                       {m.category_name
@@ -354,8 +354,8 @@ export default function EquipmentPage() {
                 </div>
                 <div className="form-grid-3">
                   <div className="form-group">
-                    <label className="form-label">Weight (kg)</label>
-                    <input className="form-input" type="number" step="0.1" value={form.weight_kg||''} onChange={e=>setForm({...form,weight_kg:e.target.value})} />
+                    <label className="form-label">Weight (lbs)</label>
+                    <input className="form-input" type="number" step="0.1" value={form.weight_lbs||''} onChange={e=>setForm({...form,weight_lbs:e.target.value})} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Day Rate ($)</label>
@@ -419,6 +419,10 @@ export default function EquipmentPage() {
                 <div className="form-group">
                   <label className="form-label">Description</label>
                   <textarea className="form-textarea" style={{minHeight:60}} value={form.description||''} onChange={e=>setForm({...form,description:e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Specific Location Notes <span style={{fontWeight:400,color:'var(--text2)'}}>— e.g. "Back left shelf, bin 3"</span></label>
+                  <textarea className="form-textarea" style={{minHeight:60}} placeholder="Optional — describe exactly where in the room this is..." value={form.notes||''} onChange={e=>setForm({...form,notes:e.target.value})} />
                 </div>
               </>}
 

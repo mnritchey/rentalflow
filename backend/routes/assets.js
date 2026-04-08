@@ -6,12 +6,16 @@ const { authMiddleware } = require('../middleware/auth');
 router.get('/', authMiddleware, (req, res) => {
   const db = getDb();
   const assets = db.prepare(`
-    SELECT a.*, m.name as model_name, m.rental_price_day, cat.name as category_name, cat.color as category_color,
-    sl.name as location_name
+    SELECT a.*, m.name as model_name, m.rental_price_day, m.replacement_value,
+    cat.name as category_name, cat.color as category_color,
+    sl.name as location_name, sl.notes as location_notes,
+    p.id as current_project_id, p.name as current_project_name
     FROM assets a
     JOIN equipment_models m ON a.model_id = m.id
     LEFT JOIN categories cat ON m.category_id = cat.id
     LEFT JOIN storage_locations sl ON a.storage_location_id = sl.id
+    LEFT JOIN project_assets pa ON pa.asset_id = a.id AND pa.status = 'checked_out'
+    LEFT JOIN projects p ON p.id = pa.project_id
     ORDER BY m.name, a.barcode
   `).all();
   res.json(assets);

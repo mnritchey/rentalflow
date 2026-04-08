@@ -114,7 +114,23 @@ export default function ProjectDetail() {
           </div>
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-          <button className="btn btn-ghost" onClick={() => { const token=localStorage.getItem('token'); window.open(`/api/reports/project/${id}/print/${token}`,'_blank'); }}>🖨 Print Receipt</button>
+          <div style={{display:'flex',gap:4,alignItems:'center'}}>
+            <select
+              id="receipt-pricing"
+              className="form-select"
+              defaultValue="value"
+              style={{width:'auto',fontSize:12,padding:'6px 8px'}}
+            >
+              <option value="value">Show Repl. Value</option>
+              <option value="rate">Show Day Rate</option>
+              <option value="none">No Pricing</option>
+            </select>
+            <button className="btn btn-ghost" onClick={() => {
+              const token = localStorage.getItem('token');
+              const show = document.getElementById('receipt-pricing').value;
+              window.open(`/api/reports/project/${id}/print/${token}/${show}`, '_blank');
+            }}>🖨 Print Receipt</button>
+          </div>
           <Link to={`/scan/${id}`} className="btn btn-primary">📷 Scan</Link>
           {editing
             ? <><button className="btn btn-success" onClick={handleSave}>Save</button><button className="btn btn-ghost" onClick={() => setEditing(false)}>Cancel</button></>

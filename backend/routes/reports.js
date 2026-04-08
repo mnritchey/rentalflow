@@ -8,7 +8,7 @@ router.get('/project/:id/print', authMiddleware, (req, res) => {
 });
 
 // Token-in-URL version for direct browser tab open
-router.get('/project/:id/print/:token', (req, res) => {
+router.get('/project/:id/print/:token/:show_mode?', (req, res) => {
   const jwt = require('jsonwebtoken');
   const { JWT_SECRET } = require('../middleware/auth');
   try {
@@ -48,11 +48,12 @@ function serveReceipt(req, res) {
 
   const companyName = db.prepare("SELECT value FROM settings WHERE key='company_name'").get()?.value || 'Rental Co';
   const logoPath = db.prepare("SELECT value FROM settings WHERE key='logo_path'").get()?.value || null;
+  const showPricing = req.query.show || req.params.show_mode || 'value'; // 'value' | 'rate' | 'none'
   res.setHeader('Content-Type', 'text/html');
-  res.send(generatePrintHTML(project, items, lineItems, companyName, logoPath));
+  res.send(generatePrintHTML(project, items, lineItems, companyName, logoPath, showPricing));
 }
 
-function generatePrintHTML(project, items, lineItems, companyName, logoPath) {
+function generatePrintHTML(project, items, lineItems, companyName, logoPath, showPricing = 'value') {
   const totalValue = items.reduce((s, i) => s + (i.replacement_value || 0), 0);
   const grouped = {};
   items.forEach(i => {
@@ -82,7 +83,11 @@ function generatePrintHTML(project, items, lineItems, companyName, logoPath) {
         <td style="padding:8px 12px;font-size:11px;color:#64748b;line-height:1.8">
           ${m.serials.length > 0 ? m.serials.join('<br>') : '—'}
         </td>
-        <td style="padding:8px 12px;text-align:right;font-size:13px">$${(m.replacement_value * m.barcodes.length).toLocaleString()}</td>
+        ${showPricing !== 'none' ? `<td style="padding:8px 12px;text-align:right;font-size:13px">
+            ${showPricing === 'rate' 
+              ? `$\${(m.rental_price_day || 0).toLocaleString()}/day`
+              : `$\${((m.replacement_value || 0) * m.barcodes.length).toLocaleString()}`}
+          </td>` : ''}
       </tr>
     `).join('');
 
@@ -205,6 +210,9 @@ function generatePrintHTML(project, items, lineItems, companyName, logoPath) {
 
   <div class="totals-row">
     <span>Total Items: <strong>${items.length}</strong></span>
+    &nbsp;&nbsp;&nbsp;
+    ${showPricing === 'value' ? `<span>Total Replacement Value: <strong>$${totalValue.toLocaleString()}</strong></span>` : ''}
+    ${showPricing === 'rate' ? `<span>Est. Day Rate Total: <strong>$${items.reduce((s,i)=>s+(i.rental_price_day||0),0).toLocaleString()}/day</strong></span>` : ''}
     &nbsp;&nbsp;&nbsp;
     <span>Unique Models: <strong>${Object.values(grouped).reduce((s,arr)=>{ const m={}; arr.forEach(i=>m[i.model_name]=1); return s+Object.keys(m).length; },0)}</strong></span>
     <span>Total Replacement Value: <strong>$${totalValue.toLocaleString()}</strong></span>

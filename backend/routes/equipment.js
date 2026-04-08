@@ -71,15 +71,15 @@ router.get('/locations', authMiddleware, (req, res) => {
 });
 router.post('/locations', authMiddleware, (req, res) => {
   const db = getDb();
-  const { name, description } = req.body;
+  const { name, description, notes } = req.body;
   const id = uuidv4();
-  db.prepare('INSERT INTO storage_locations (id, name, description) VALUES (?, ?, ?)').run(id, name, description);
+  db.prepare('INSERT INTO storage_locations (id, name, description, notes) VALUES (?, ?, ?, ?)').run(id, name, description, notes || null);
   res.json({ id, name, description });
 });
 router.put('/locations/:id', authMiddleware, (req, res) => {
   const db = getDb();
-  const { name, description } = req.body;
-  db.prepare('UPDATE storage_locations SET name=?, description=? WHERE id=?').run(name, description, req.params.id);
+  const { name, description, notes } = req.body;
+  db.prepare('UPDATE storage_locations SET name=?, description=?, notes=? WHERE id=?').run(name, description, notes || null, req.params.id);
   res.json({ success: true });
 });
 router.delete('/locations/:id', authMiddleware, (req, res) => {
@@ -118,6 +118,8 @@ router.get('/models/:id', authMiddleware, (req, res) => {
   const assets = db.prepare(`
     SELECT a.*, sl.name as location_name FROM assets a
     LEFT JOIN storage_locations sl ON a.storage_location_id = sl.id
+    LEFT JOIN project_assets pa ON pa.asset_id = a.id AND pa.status = 'checked_out'
+    LEFT JOIN projects p ON p.id = pa.project_id
     WHERE a.model_id = ?
     ORDER BY a.barcode
   `).all(req.params.id);
@@ -126,21 +128,21 @@ router.get('/models/:id', authMiddleware, (req, res) => {
 
 router.post('/models', authMiddleware, upload.single('image'), (req, res) => {
   const db = getDb();
-  const { name, manufacturer_id, category_id, description, weight_kg, rental_price_day, replacement_value, notes } = req.body;
+  const { name, manufacturer_id, category_id, description, weight_lbs, rental_price_day, replacement_value, notes } = req.body;
   const id = uuidv4();
   const image_path = req.file ? `/uploads/equipment/${req.file.filename}` : null;
-  db.prepare('INSERT INTO equipment_models (id, name, manufacturer_id, category_id, description, weight_kg, rental_price_day, replacement_value, image_path, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(id, name, manufacturer_id || null, category_id || null, description, weight_kg || null, rental_price_day || 0, replacement_value || 0, image_path, notes);
+  db.prepare('INSERT INTO equipment_models (id, name, manufacturer_id, category_id, description, weight_lbs, rental_price_day, replacement_value, image_path, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(id, name, manufacturer_id || null, category_id || null, description, weight_lbs || null, rental_price_day || 0, replacement_value || 0, image_path, notes);
   res.json({ id, name });
 });
 
 router.put('/models/:id', authMiddleware, upload.single('image'), (req, res) => {
   const db = getDb();
-  const { name, manufacturer_id, category_id, description, weight_kg, rental_price_day, replacement_value, notes } = req.body;
+  const { name, manufacturer_id, category_id, description, weight_lbs, rental_price_day, replacement_value, notes } = req.body;
   const image_path = req.file ? `/uploads/equipment/${req.file.filename}` : undefined;
   if (image_path) {
-    db.prepare('UPDATE equipment_models SET name=?, manufacturer_id=?, category_id=?, description=?, weight_kg=?, rental_price_day=?, replacement_value=?, image_path=?, notes=? WHERE id=?').run(name, manufacturer_id || null, category_id || null, description, weight_kg || null, rental_price_day || 0, replacement_value || 0, image_path, notes, req.params.id);
+    db.prepare('UPDATE equipment_models SET name=?, manufacturer_id=?, category_id=?, description=?, weight_lbs=?, rental_price_day=?, replacement_value=?, image_path=?, notes=? WHERE id=?').run(name, manufacturer_id || null, category_id || null, description, weight_lbs || null, rental_price_day || 0, replacement_value || 0, image_path, notes, req.params.id);
   } else {
-    db.prepare('UPDATE equipment_models SET name=?, manufacturer_id=?, category_id=?, description=?, weight_kg=?, rental_price_day=?, replacement_value=?, notes=? WHERE id=?').run(name, manufacturer_id || null, category_id || null, description, weight_kg || null, rental_price_day || 0, replacement_value || 0, notes, req.params.id);
+    db.prepare('UPDATE equipment_models SET name=?, manufacturer_id=?, category_id=?, description=?, weight_lbs=?, rental_price_day=?, replacement_value=?, notes=? WHERE id=?').run(name, manufacturer_id || null, category_id || null, description, weight_lbs || null, rental_price_day || 0, replacement_value || 0, notes, req.params.id);
   }
   res.json({ success: true });
 });

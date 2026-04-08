@@ -155,7 +155,7 @@ export default function ModelDetail() {
                     <option value="">None</option>{manufacturers.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
                 </div>
-                <div className="form-group"><label className="form-label">Weight (kg)</label><input className="form-input" type="number" step="0.1" value={form.weight_kg||''} onChange={e=>setForm({...form,weight_kg:e.target.value})}/></div>
+                <div className="form-group"><label className="form-label">Weight (lbs)</label><input className="form-input" type="number" step="0.1" value={form.weight_lbs||''} onChange={e=>setForm({...form,weight_lbs:e.target.value})}/></div>
                 <div className="form-group"><label className="form-label">Day Rate ($)</label><input className="form-input" type="number" step="0.01" value={form.rental_price_day||''} onChange={e=>setForm({...form,rental_price_day:e.target.value})}/></div>
                 <div className="form-group"><label className="form-label">Replacement Value ($)</label><input className="form-input" type="number" step="0.01" value={form.replacement_value||''} onChange={e=>setForm({...form,replacement_value:e.target.value})}/></div>
               </div>
@@ -167,7 +167,7 @@ export default function ModelDetail() {
               {model.image_path && <img src={model.image_path} alt={model.name} style={{width:'100%',maxHeight:180,objectFit:'contain',borderRadius:8,background:'var(--surface2)',marginBottom:8}} />}
               {model.description && <p style={{color:'var(--text2)',fontSize:13}}>{model.description}</p>}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:4}}>
-                {model.weight_kg && <Stat label="Weight" value={`${model.weight_kg}kg`} />}
+                {model.weight_lbs && <Stat label="Weight" value={`${model.weight_lbs}kg`} />}
                 {model.rental_price_day > 0 && <Stat label="Day Rate" value={`$${model.rental_price_day}`} />}
                 {model.replacement_value > 0 && <Stat label="Replacement Value" value={`$${(model.replacement_value).toLocaleString()}`} />}
               </div>
@@ -243,15 +243,32 @@ export default function ModelDetail() {
         ) : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Barcode</th><th>Serial #</th><th>Condition</th><th>Location</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Barcode</th><th>Serial #</th><th>Condition</th><th>Location</th><th>Status</th><th>Purchase Date</th><th>Notes</th><th>Actions</th></tr></thead>
               <tbody>
                 {(model.assets||[]).map(a => (
                   <tr key={a.id}>
                     <td><span className="mono" style={{fontWeight:600}}>{a.barcode}</span></td>
                     <td>{a.serial_number || <span className="text-muted">—</span>}</td>
                     <td><span className={`badge ${COND_CLASS[a.condition]||'badge-gray'}`}>{a.condition}</span></td>
-                    <td>{a.location_name || <span className="text-muted">—</span>}</td>
-                    <td><span className={`badge ${a.status==='available'?'badge-green':a.status==='checked_out'?'badge-amber':'badge-gray'}`}>{a.status}</span></td>
+                    <td>
+                      {a.location_name ? (
+                        <div>
+                          <div style={{fontWeight:500}}>{a.location_name}</div>
+                          {a.location_notes && <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>{a.location_notes}</div>}
+                        </div>
+                      ) : <span className="text-muted">—</span>}
+                    </td>
+                    <td>
+                      <span className={`badge ${a.status==='available'?'badge-green':a.status==='checked_out'?'badge-amber':a.status==='maintenance'?'badge-red':'badge-gray'}`}>{a.status}</span>
+                      {a.current_project_name && (
+                        <div style={{fontSize:11,marginTop:3}}>
+                          <a href={`/projects/${a.current_project_id}`} style={{color:'var(--amber)',textDecoration:'none',fontWeight:600}}>
+                            📋 {a.current_project_name}
+                          </a>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{fontSize:12,color:'var(--text2)'}}>{a.purchase_date||<span className="text-muted">—</span>}</td>
                     <td style={{fontSize:12,color:'var(--text2)',maxWidth:160}}>
                       {a.notes ? (
                         <span title={a.notes} style={{display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.notes}</span>
@@ -314,6 +331,7 @@ export default function ModelDetail() {
                     <option value="">No location</option>{locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
+                <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={assetForm.purchase_date} onChange={e=>setAssetForm({...assetForm,purchase_date:e.target.value})}/></div>
                 <div className="form-group"><label className="form-label">Purchase Price ($)</label><input className="form-input" type="number" step="0.01" value={assetForm.purchase_price} onChange={e=>setAssetForm({...assetForm,purchase_price:e.target.value})}/></div>
               </div>
               <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={()=>setShowAddAsset(false)}>Cancel</button><button type="submit" className="btn btn-primary">Add Asset</button></div>
@@ -360,6 +378,10 @@ export default function ModelDetail() {
                     <option value="">No location</option>{locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
+              </div>
+              <div className="form-grid">
+                <div className="form-group"><label className="form-label">Purchase Date</label><input className="form-input" type="date" value={editAsset.purchase_date||''} onChange={e=>setEditAsset({...editAsset,purchase_date:e.target.value})}/></div>
+                <div className="form-group"><label className="form-label">Purchase Price ($)</label><input className="form-input" type="number" step="0.01" value={editAsset.purchase_price||''} onChange={e=>setEditAsset({...editAsset,purchase_price:e.target.value})}/></div>
               </div>
               <div className="form-group"><label className="form-label">Notes</label><textarea className="form-textarea" value={editAsset.notes||''} onChange={e=>setEditAsset({...editAsset,notes:e.target.value})}/></div>
               <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={()=>setEditAsset(null)}>Cancel</button><button type="submit" className="btn btn-primary">Save</button></div>

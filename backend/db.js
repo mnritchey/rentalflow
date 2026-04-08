@@ -57,6 +57,25 @@ function runMigrations() {
     db.pragma('foreign_keys = ON');
   }
 
+  // Migration: rename weight_kg to weight_lbs
+  try {
+    db.prepare("SELECT weight_lbs FROM equipment_models LIMIT 1").get();
+  } catch(e) {
+    try {
+      // SQLite doesn't support RENAME COLUMN before 3.25, use safe approach
+      db.exec('ALTER TABLE equipment_models ADD COLUMN weight_lbs REAL');
+      db.exec('UPDATE equipment_models SET weight_lbs = weight_kg WHERE weight_kg IS NOT NULL');
+      console.log('Migrated weight_kg to weight_lbs.');
+    } catch(e2) { /* column may already exist */ }
+  }
+
+  // Migration: add notes column to storage_locations if missing
+  try {
+    db.prepare("SELECT notes FROM storage_locations LIMIT 1").get();
+  } catch(e) {
+    try { db.exec('ALTER TABLE storage_locations ADD COLUMN notes TEXT'); console.log('Added notes to storage_locations.'); } catch(e2) {}
+  }
+
   // Migration: add software_licenses tables if missing
   try {
     db.prepare("SELECT 1 FROM software_licenses LIMIT 1").get();
@@ -244,7 +263,8 @@ function initSchema() {
     CREATE TABLE IF NOT EXISTS storage_locations (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      description TEXT
+      description TEXT,
+      notes TEXT
     );
 
     CREATE TABLE IF NOT EXISTS equipment_models (
@@ -253,7 +273,7 @@ function initSchema() {
       manufacturer_id TEXT REFERENCES manufacturers(id),
       category_id TEXT REFERENCES categories(id),
       description TEXT,
-      weight_kg REAL,
+      weight_lbs REAL,
       rental_price_day REAL DEFAULT 0,
       replacement_value REAL DEFAULT 0,
       image_path TEXT,
