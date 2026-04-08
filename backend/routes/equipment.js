@@ -116,7 +116,12 @@ router.get('/models/:id', authMiddleware, (req, res) => {
   `).get(req.params.id);
   if (!model) return res.status(404).json({ error: 'Not found' });
   const assets = db.prepare(`
-    SELECT a.*, sl.name as location_name FROM assets a
+    SELECT a.*,
+      sl.name  AS location_name,
+      sl.notes AS location_notes,
+      p.id     AS current_project_id,
+      p.name   AS current_project_name
+    FROM assets a
     LEFT JOIN storage_locations sl ON a.storage_location_id = sl.id
     LEFT JOIN project_assets pa ON pa.asset_id = a.id AND pa.status = 'checked_out'
     LEFT JOIN projects p ON p.id = pa.project_id
