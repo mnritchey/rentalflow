@@ -68,7 +68,7 @@ function generatePrintHTML(project, items, lineItems, companyName, logoPath, sho
     const byModel = {};
     catItems.forEach(i => {
       const key = i.model_name;
-      if (!byModel[key]) byModel[key] = { model_name: i.model_name, replacement_value: i.replacement_value||0, barcodes: [], serials: [] };
+      if (!byModel[key]) byModel[key] = { model_name: i.model_name, replacement_value: i.replacement_value||0, rental_price_day: i.rental_price_day||0, barcodes: [], serials: [] };
       byModel[key].barcodes.push(i.barcode);
       if (i.serial_number) byModel[key].serials.push(i.serial_number);
     });
@@ -173,10 +173,11 @@ function generatePrintHTML(project, items, lineItems, companyName, logoPath, sho
   <table>
     <thead>
       <tr>
-        <th>Equipment</th>
-        <th>Barcode / Tag</th>
-        <th>Serial #</th>
-        <th style="text-align:right">Replacement Value</th>
+        <th style="text-align:left">Equipment</th>
+        <th style="text-align:center">Qty</th>
+        <th style="text-align:left">Barcode</th>
+        <th style="text-align:left">Serial #</th>
+        ${showPricing !== 'none' ? '<th style="text-align:right">' + (showPricing === 'rate' ? 'Rental Cost' : 'Replacement Value') + '</th>' : ''}
       </tr>
     </thead>
     <tbody>${rows}</tbody>
