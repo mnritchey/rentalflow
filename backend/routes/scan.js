@@ -88,7 +88,18 @@ router.post('/', authMiddleware, (req, res) => {
     }
     db.prepare('UPDATE project_assets SET status=?, checked_in_at=CURRENT_TIMESTAMP, checked_in_by=? WHERE id=?').run('checked_in', req.user.id, assignment.id);
     db.prepare("UPDATE assets SET status='available' WHERE id=?").run(asset.id);
-    const msg = { success: true, sound: 'success', message: `✓ ${asset.model_name} (${barcode}) checked in`, asset };
+
+    // Auto-complete project if all scanned assets AND all manual line items are checked in
+    let auto_completed = false;
+    const openAssets = db.prepare("SELECT COUNT(*) as n FROM project_assets WHERE project_id=? AND status != 'checked_in'").get(project_id);
+    const openLines  = db.prepare("SELECT COUNT(*) as n FROM project_line_items WHERE project_id=? AND checked_in=0").get(project_id);
+    const proj = db.prepare("SELECT status FROM projects WHERE id=?").get(project_id);
+    if (openAssets.n === 0 && openLines.n === 0 && proj && proj.status !== 'completed') {
+      db.prepare("UPDATE projects SET status='completed', updated_at=CURRENT_TIMESTAMP WHERE id=?").run(project_id);
+      auto_completed = true;
+    }
+
+    const msg = { success: true, sound: 'success', message: `✓ ${asset.model_name} (${barcode}) checked in`, asset, auto_completed };
     db.prepare('INSERT INTO scan_log (id, barcode, asset_id, project_id, action, user_id, result, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(logId, barcode, asset.id, project_id, 'checkin', req.user.id, 'success', msg.message);
     broadcast('scan', { ...msg, project_id });
     return res.json(msg);

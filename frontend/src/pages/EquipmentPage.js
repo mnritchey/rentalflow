@@ -139,6 +139,13 @@ export default function EquipmentPage() {
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
+          {tab === 'Models' && (
+            <button className="btn btn-ghost" onClick={() => {
+              const token = localStorage.getItem('token');
+              const catParam = filterCat ? `&category_id=${filterCat}` : '';
+              window.open(`/api/reports/inventory/pdf?token=${token}${catParam}`, '_blank');
+            }}>📄 Export PDF</button>
+          )}
           {tab === 'Models'        && <button className="btn btn-primary" onClick={() => openNew('model')}>+ Add Model</button>}
           {tab === 'Categories'    && <button className="btn btn-primary" onClick={() => openNew('category')}>+ Add Category</button>}
           {tab === 'Manufacturers' && <button className="btn btn-primary" onClick={() => openNew('manufacturer')}>+ Add Manufacturer</button>}

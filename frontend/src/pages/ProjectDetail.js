@@ -36,6 +36,7 @@ export default function ProjectDetail() {
   const [editLineItem, setEditLineItem]     = useState(null); // null = new
   const [lineForm, setLineForm]             = useState({ description:'', quantity:1, unit_price:'', notes:'' });
   const [lineSaving, setLineSaving]         = useState(false);
+  const [autoCompleted, setAutoCompleted]   = useState(false);
 
   const load = () => api.get(`/projects/${id}`).then(p => { setProject(p); setForm(p); });
   useEffect(() => { load(); api.get('/contacts').then(setContacts); }, [id]);
@@ -79,6 +80,12 @@ export default function ProjectDetail() {
   };
   const handleDeleteLine = async (lineId) => {
     await api.delete(`/projects/${id}/line-items/${lineId}`);
+    load();
+  };
+
+  const handleCheckInLine = async (lineId, checkedIn) => {
+    const res = await api.post(`/projects/${id}/line-items/${lineId}/checkin`, { checked_in: checkedIn ? 1 : 0 });
+    if (res.auto_completed) setAutoCompleted(true);
     load();
   };
 
@@ -138,6 +145,19 @@ export default function ProjectDetail() {
           {can.deleteProjects && <button className="btn btn-danger" onClick={() => setShowDelete(true)}>Delete</button>}
         </div>
       </div>
+
+      {autoCompleted && (
+        <div style={{
+          background:'var(--green-dim)', border:'1px solid var(--green)',
+          borderRadius:8, padding:'12px 16px', marginBottom:16,
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+        }}>
+          <span style={{ fontWeight:600, color:'var(--green)' }}>
+            🎉 All items checked in — project marked as completed!
+          </span>
+          <button className="btn btn-ghost btn-sm" onClick={() => setAutoCompleted(false)}>✕</button>
+        </div>
+      )}
 
       <div className="grid-2" style={{ marginBottom:24 }}>
         <div className="card">
@@ -341,12 +361,13 @@ export default function ProjectDetail() {
                   <th>Description</th>
                   <th style={{ textAlign:'center', width:60 }}>Qty</th>
                   <th>Notes</th>
+                  <th style={{ textAlign:'center', width:100 }}>Checked In</th>
                   <th style={{ width:100 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {lineItems.map(li => (
-                  <tr key={li.id}>
+                  <tr key={li.id} style={{ opacity: li.checked_in ? 0.6 : 1 }}>
                     <td>
                       <div className="table-name" style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <span style={{
@@ -355,7 +376,7 @@ export default function ProjectDetail() {
                           padding:'2px 6px', fontWeight:700, textTransform:'uppercase',
                           letterSpacing:'.3px', flexShrink:0,
                         }}>Manual</span>
-                        {li.description}
+                        {li.checked_in ? <s style={{ color:'var(--text2)' }}>{li.description}</s> : li.description}
                       </div>
                     </td>
                     <td style={{ textAlign:'center' }}>
@@ -366,6 +387,15 @@ export default function ProjectDetail() {
                       }}>{li.quantity}</span>
                     </td>
                     <td style={{ fontSize:13, color:'var(--text2)' }}>{li.notes || '—'}</td>
+                    <td style={{ textAlign:'center' }}>
+                      <button
+                        className={`btn btn-sm ${li.checked_in ? 'btn-success' : 'btn-ghost'}`}
+                        onClick={() => handleCheckInLine(li.id, !li.checked_in)}
+                        title={li.checked_in ? 'Mark as not returned' : 'Mark as returned'}
+                      >
+                        {li.checked_in ? '✓ In' : 'Check In'}
+                      </button>
+                    </td>
                     <td>
                       <div style={{ display:'flex', gap:6 }}>
                         <button className="btn btn-ghost btn-sm" onClick={() => openEditLine(li)}>Edit</button>

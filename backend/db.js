@@ -232,6 +232,13 @@ function runMigrations() {
     `);
     console.log('Created maintenance_records table.');
   }
+
+  // Migration: add checked_in column to project_line_items if missing
+  try {
+    db.prepare("SELECT checked_in FROM project_line_items LIMIT 1").get();
+  } catch(e) {
+    try { db.exec('ALTER TABLE project_line_items ADD COLUMN checked_in INTEGER DEFAULT 0'); console.log('Added checked_in to project_line_items.'); } catch(e2) {}
+  }
 }
 
 function initSchema() {
@@ -346,6 +353,7 @@ function initSchema() {
       unit_price REAL DEFAULT 0,
       notes TEXT,
       sort_order INTEGER DEFAULT 0,
+      checked_in INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 

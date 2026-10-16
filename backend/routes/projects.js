@@ -7,8 +7,9 @@ router.get('/', authMiddleware, (req, res) => {
   const db = getDb();
   const projects = db.prepare(`
     SELECT p.*, c.name as contact_name, c.company as contact_company,
-    COUNT(DISTINCT pa.id) as total_items,
-    SUM(CASE WHEN pa.status = 'checked_out' THEN 1 ELSE 0 END) as checked_out_count
+    COUNT(DISTINCT pa.id) as scanned_items,
+    SUM(CASE WHEN pa.status = 'checked_out' THEN 1 ELSE 0 END) as checked_out_count,
+    COALESCE((SELECT SUM(pli.quantity) FROM project_line_items pli WHERE pli.project_id = p.id), 0) as manual_items_qty
     FROM projects p
     LEFT JOIN contacts c ON p.contact_id = c.id
     LEFT JOIN project_assets pa ON pa.project_id = p.id
@@ -74,16 +75,17 @@ router.get('/:id', authMiddleware, (req, res) => {
 
 router.post('/', authMiddleware, (req, res) => {
   const db = getDb();
-  const { name, contact_id, start_date, end_date, venue, description, notes, eula_text } = req.body;
+  const { name, contact_id, start_date, end_date, venue, description, notes, eula_text, status } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Project name is required' });
   const id = uuidv4();
   const defaultEula = db.prepare("SELECT value FROM settings WHERE key='eula_default'").get()?.value;
   const nullIfEmpty = v => (v && v.trim()) ? v.trim() : null;
+  const initialStatus = status || 'active';
   try {
-    db.prepare('INSERT INTO projects (id, name, contact_id, start_date, end_date, venue, description, notes, eula_text, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO projects (id, name, contact_id, start_date, end_date, venue, description, notes, eula_text, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
       id, name.trim(), nullIfEmpty(contact_id), nullIfEmpty(start_date), nullIfEmpty(end_date),
       nullIfEmpty(venue), nullIfEmpty(description), nullIfEmpty(notes),
-      eula_text || defaultEula, req.user.id
+      eula_text || defaultEula, initialStatus, req.user.id
     );
     res.json({ id, name });
   } catch (e) {
@@ -164,6 +166,25 @@ router.delete('/:id/line-items/:itemId', authMiddleware, (req, res) => {
   const db = getDb();
   db.prepare('DELETE FROM project_line_items WHERE id=? AND project_id=?').run(req.params.itemId, req.params.id);
   res.json({ success: true });
+});
+
+// Toggle check-in on a manual line item; auto-complete project if all items in
+router.post('/:id/line-items/:itemId/checkin', authMiddleware, (req, res) => {
+  const db = getDb();
+  const { checked_in } = req.body; // 1 or 0
+  db.prepare('UPDATE project_line_items SET checked_in=? WHERE id=? AND project_id=?').run(checked_in ? 1 : 0, req.params.itemId, req.params.id);
+
+  // Auto-complete: check if all scanned assets are checked_in AND all line items are checked_in
+  if (checked_in) {
+    const openAssets = db.prepare("SELECT COUNT(*) as n FROM project_assets WHERE project_id=? AND status != 'checked_in'").get(req.params.id);
+    const openLines  = db.prepare("SELECT COUNT(*) as n FROM project_line_items WHERE project_id=? AND checked_in=0").get(req.params.id);
+    const proj = db.prepare("SELECT status FROM projects WHERE id=?").get(req.params.id);
+    if (openAssets.n === 0 && openLines.n === 0 && proj && proj.status !== 'completed') {
+      db.prepare("UPDATE projects SET status='completed', updated_at=CURRENT_TIMESTAMP WHERE id=?").run(req.params.id);
+      return res.json({ success: true, auto_completed: true });
+    }
+  }
+  res.json({ success: true, auto_completed: false });
 });
 
 module.exports = router;

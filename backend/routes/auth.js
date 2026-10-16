@@ -41,15 +41,25 @@ router.post('/users', authMiddleware, (req, res) => {
 });
 
 router.put('/users/:id', authMiddleware, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
   const db = getDb();
-  const { full_name, role, password } = req.body;
-  if (password) {
-    const hash = bcrypt.hashSync(password, 10);
-    db.prepare('UPDATE users SET full_name=?, role=?, password_hash=? WHERE id=?').run(full_name, role, hash, req.params.id);
-  } else {
-    db.prepare('UPDATE users SET full_name=?, role=? WHERE id=?').run(full_name, role, req.params.id);
+  const { username, full_name, role, password } = req.body;
+  // Check username uniqueness if changing it
+  if (username) {
+    const existing = db.prepare('SELECT id FROM users WHERE username=? AND id!=?').get(username, req.params.id);
+    if (existing) return res.status(400).json({ error: 'Username already taken' });
   }
-  res.json({ success: true });
+  try {
+    if (password) {
+      const hash = bcrypt.hashSync(password, 10);
+      db.prepare('UPDATE users SET username=COALESCE(?,username), full_name=?, role=?, password_hash=? WHERE id=?').run(username||null, full_name, role, hash, req.params.id);
+    } else {
+      db.prepare('UPDATE users SET username=COALESCE(?,username), full_name=?, role=? WHERE id=?').run(username||null, full_name, role, req.params.id);
+    }
+    res.json({ success: true });
+  } catch(e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 router.delete('/users/:id', authMiddleware, (req, res) => {

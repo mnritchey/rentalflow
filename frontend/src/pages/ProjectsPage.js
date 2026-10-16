@@ -44,7 +44,7 @@ export default function ProjectsPage() {
     try { return JSON.parse(localStorage.getItem('projectHiddenStatuses') || '[]'); }
     catch { return []; }
   });
-  const [form, setForm] = useState({ name:'', contact_id:'', start_date:'', end_date:'', venue:'', description:'', notes:'' });
+  const [form, setForm] = useState({ name:'', contact_id:'', start_date:'', end_date:'', venue:'', description:'', notes:'', status:'active' });
   const [creating, setCreating]     = useState(false);
   const [createError, setCreateError] = useState('');
   const navigate = useNavigate();
@@ -90,7 +90,7 @@ export default function ProjectsPage() {
       const res = await api.post('/projects', form);
       if (res.id) {
         setShowModal(false);
-        setForm({ name:'', contact_id:'', start_date:'', end_date:'', venue:'', description:'', notes:'' });
+        setForm({ name:'', contact_id:'', start_date:'', end_date:'', venue:'', description:'', notes:'', status:'active' });
         navigate(`/projects/${res.id}`);
       } else {
         setCreateError(res.error || 'Failed to create project');
@@ -193,7 +193,7 @@ export default function ProjectsPage() {
                   <td style={{ fontSize:13 }}>{p.end_date   || <span className="text-muted">—</span>}</td>
                   <td><span className={`badge ${STATUS_CLASS[p.status] || 'badge-gray'}`}>{p.status}</span></td>
                   <td style={{ textAlign:'right' }}>
-                    <span style={{ fontWeight:600 }}>{p.total_items || 0}</span>
+                    <span style={{ fontWeight:600 }}>{(p.scanned_items || 0) + (p.manual_items_qty || 0)}</span>
                     {p.checked_out_count > 0 &&
                       <span style={{ color:'var(--amber)', fontSize:12, marginLeft:6 }}>({p.checked_out_count} out)</span>}
                   </td>
@@ -240,9 +240,20 @@ export default function ProjectsPage() {
                   <input className="form-input" type="date" value={form.end_date} onChange={e => setForm({...form, end_date:e.target.value})} />
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Venue / Location</label>
-                <input className="form-input" value={form.venue} onChange={e => setForm({...form, venue:e.target.value})} />
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Venue / Location</label>
+                  <input className="form-input" value={form.venue} onChange={e => setForm({...form, venue:e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select className="form-select" value={form.status} onChange={e => setForm({...form, status:e.target.value})}>
+                    <option value="active">Active</option>
+                    <option value="draft">Draft</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Description</label>

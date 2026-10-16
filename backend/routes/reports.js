@@ -38,7 +38,7 @@ function serveReceipt(req, res) {
     JOIN assets a ON pa.asset_id = a.id
     JOIN equipment_models m ON a.model_id = m.id
     LEFT JOIN categories cat ON m.category_id = cat.id
-    WHERE pa.project_id = ?
+    WHERE pa.project_id = ? AND pa.status = 'checked_out'
     ORDER BY cat.name, m.name, a.barcode
   `).all(req.params.id);
 
@@ -472,6 +472,142 @@ function generateContactReportHTML(contact, items, companyName, logoPath) {
   ${noItemsMsg || projectSections}
 </div>
 </body></html>`;
+}
+
+// ── Condensed Inventory PDF ────────────────────────────────────────────────
+// GET /api/reports/inventory/pdf?category_id=<id>&token=<jwt>
+// Returns an HTML page styled for print / PDF save.
+// Supports token-in-query so it can be opened in a new tab.
+router.get('/inventory/pdf', (req, res, next) => {
+  if (req.query.token) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const { JWT_SECRET } = require('../middleware/auth');
+      req.user = jwt.verify(req.query.token, JWT_SECRET);
+      return next();
+    } catch(e) { return res.status(401).send('Unauthorized'); }
+  }
+  return authMiddleware(req, res, next);
+}, (req, res) => {
+  const db = getDb();
+  const { category_id } = req.query;
+
+  const settings = db.prepare("SELECT key, value FROM settings").all()
+    .reduce((o, r) => { o[r.key] = r.value; return o; }, {});
+  const companyName = settings.company_name || 'RentalFlow';
+
+  let categoryWhere = '';
+  let categoryParams = [];
+  if (category_id) {
+    categoryWhere = 'AND m.category_id = ?';
+    categoryParams = [category_id];
+  }
+
+  const rows = db.prepare(`
+    SELECT
+      m.id,
+      m.name AS model_name,
+      m.description,
+      mfr.name AS manufacturer_name,
+      cat.name AS category_name,
+      cat.color AS category_color,
+      COUNT(a.id) AS total_qty,
+      SUM(CASE WHEN a.status = 'available' THEN 1 ELSE 0 END) AS available_qty,
+      m.replacement_value,
+      m.rental_price_day
+    FROM equipment_models m
+    LEFT JOIN manufacturers mfr ON m.manufacturer_id = mfr.id
+    LEFT JOIN categories cat ON m.category_id = cat.id
+    LEFT JOIN assets a ON a.model_id = m.id
+    WHERE 1=1 ${categoryWhere}
+    GROUP BY m.id
+    ORDER BY cat.name ASC, m.name ASC
+  `).all(...categoryParams);
+
+  const categories = db.prepare('SELECT id, name, color FROM categories ORDER BY name').all();
+  const selectedCat = category_id ? categories.find(c => c.id === category_id) : null;
+
+  const grouped = {};
+  rows.forEach(r => {
+    const cat = r.category_name || 'Uncategorized';
+    if (!grouped[cat]) grouped[cat] = { color: r.category_color || '#64748b', items: [] };
+    grouped[cat].items.push(r);
+  });
+
+  const totalModels = rows.length;
+  const totalAssets = rows.reduce((s, r) => s + (r.total_qty || 0), 0);
+
+  const catSections = Object.entries(grouped).map(([cat, { color, items }]) => {
+    const itemRows = items.map(i => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-weight:600">${escHtml(i.model_name)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;text-align:center;font-weight:700">${i.total_qty}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#64748b">${escHtml(i.manufacturer_name || '—')}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;color:#475569">${escHtml(i.description || '—')}</td>
+      </tr>`).join('');
+
+    return `
+    <div style="margin-bottom:28px;break-inside:avoid">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;border-bottom:2px solid ${color};padding-bottom:6px">
+        <div style="width:12px;height:12px;background:${color};border-radius:3px"></div>
+        <span style="font-weight:800;font-size:16px;color:#1e293b">${escHtml(cat)}</span>
+        <span style="font-size:12px;color:#94a3b8;margin-left:4px">${items.length} model${items.length !== 1 ? 's' : ''}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:7px 12px;text-align:left;font-weight:700;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Model</th>
+            <th style="padding:7px 12px;text-align:center;font-weight:700;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.5px;width:60px">Qty</th>
+            <th style="padding:7px 12px;text-align:left;font-weight:700;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Manufacturer</th>
+            <th style="padding:7px 12px;text-align:left;font-weight:700;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Description</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  const printedAt = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Inventory — ${escHtml(companyName)}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin:0; padding:32px; color:#1e293b; background:#fff; }
+  @media print { body { padding:16px; } .no-print { display:none; } }
+  @page { margin:20mm; }
+</style>
+</head><body>
+<div style="max-width:900px;margin:0 auto">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:3px solid #6c63ff">
+    <div>
+      <div style="font-size:24px;font-weight:900;color:#1e293b">${escHtml(companyName)}</div>
+      <div style="font-size:18px;font-weight:700;color:#6c63ff;margin-top:2px">Equipment Inventory</div>
+      ${selectedCat ? `<div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border-radius:20px;padding:3px 12px;font-size:12px"><div style="width:8px;height:8px;background:${selectedCat.color};border-radius:2px"></div><strong>${escHtml(selectedCat.name)}</strong> only</div>` : ''}
+    </div>
+    <div style="text-align:right;font-size:12px;color:#94a3b8">
+      <div>Printed ${printedAt}</div>
+      <div style="margin-top:8px;display:flex;gap:20px">
+        <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#1e293b">${totalModels}</div><div style="text-transform:uppercase;letter-spacing:.5px">Models</div></div>
+        <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#1e293b">${totalAssets}</div><div style="text-transform:uppercase;letter-spacing:.5px">Assets</div></div>
+      </div>
+    </div>
+  </div>
+
+  ${rows.length === 0 ? '<p style="color:#94a3b8;text-align:center;padding:40px">No equipment found</p>' : catSections}
+</div>
+</body></html>`;
+
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+});
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 module.exports = router;
