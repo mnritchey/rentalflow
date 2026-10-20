@@ -194,8 +194,8 @@ export default function ProjectsPage() {
                   <td><span className={`badge ${STATUS_CLASS[p.status] || 'badge-gray'}`}>{p.status}</span></td>
                   <td style={{ textAlign:'right' }}>
                     <span style={{ fontWeight:600 }}>{(p.scanned_items_out || 0) + (p.manual_items_qty || 0)}</span>
-                    {p.checked_out_count > 0 &&
-                      <span style={{ color:'var(--amber)', fontSize:12, marginLeft:6 }}>({p.checked_out_count} out)</span>}
+                    {(p.checked_out_count > 0 || p.manual_items_qty > 0) &&
+                      <span style={{ color:'var(--amber)', fontSize:12, marginLeft:6 }}>({(p.checked_out_count || 0) + (p.manual_items_qty || 0)} out)</span>}
                   </td>
                   <td>
                     <div style={{ display:'flex', gap:6 }}>
