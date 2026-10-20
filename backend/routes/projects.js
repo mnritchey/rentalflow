@@ -8,8 +8,9 @@ router.get('/', authMiddleware, (req, res) => {
   const projects = db.prepare(`
     SELECT p.*, c.name as contact_name, c.company as contact_company,
     COUNT(DISTINCT pa.id) as scanned_items,
+    SUM(CASE WHEN pa.status != 'checked_in' THEN 1 ELSE 0 END) as scanned_items_out,
     SUM(CASE WHEN pa.status = 'checked_out' THEN 1 ELSE 0 END) as checked_out_count,
-    COALESCE((SELECT SUM(pli.quantity) FROM project_line_items pli WHERE pli.project_id = p.id), 0) as manual_items_qty
+    COALESCE((SELECT SUM(pli.quantity) FROM project_line_items pli WHERE pli.project_id = p.id AND pli.checked_in = 0), 0) as manual_items_qty
     FROM projects p
     LEFT JOIN contacts c ON p.contact_id = c.id
     LEFT JOIN project_assets pa ON pa.project_id = p.id
