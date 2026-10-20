@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 //   MINOR — new features and modules
 //   PATCH — bug fixes, tweaks, small improvements
 const RELEASE_NOTES = [
+  { version:'1.6.1', date:'2026-10-20', notes:'Fix: items count on projects list now only counts non-checked-in items (scanned + manual)' },
   { version:'1.6.0', date:'2026-10-16', notes:'Receipt only shows checked-out items; project status dropdown on create (defaults to Active); items count includes manual line items; admin can edit usernames; manual line items can be checked in per-item; project auto-completes when all items (scanned + manual) are checked in; condensed inventory PDF export with category filter' },
   { version:'1.5.4', date:'2026-03-24', notes:'Fix: receipt missing Qty header; rental rate showing 0 (not stored in row aggregator); header now shows "Rental Cost" vs "Replacement Value" dynamically' },
   { version:'1.5.3', date:'2026-03-24', notes:'Fix: checked-out project not showing on asset rows (SELECT was missing project columns despite JOIN being present)' },
