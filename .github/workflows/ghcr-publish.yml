@@ -38,10 +38,11 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            # On version tag push: full semver breakdown
+            # On version tag push: full semver breakdown + latest
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
             # On manual trigger: use the provided tag
             type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
             # Always tag branch name
